@@ -44,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($shippingPhone)) $errors[] = 'Phone is required';
 
         if (empty($errors)) {
+            $saveShipping = !isset($_POST['save_shipping_info']) || !empty($_POST['save_shipping_info']);
+
             // Save shipping info to session
             $_SESSION['checkout'] = [
                 'shipping_name' => $shippingName,
@@ -51,7 +53,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'shipping_city' => $shippingCity,
                 'shipping_postal' => $shippingPostal,
                 'shipping_phone' => $shippingPhone,
+                'save_shipping_info' => $saveShipping ? 1 : 0
             ];
+
+            // If user is logged in and opted to save (or default), save to user profile
+            if ($userId && $saveShipping) {
+                $uStmt = $db->prepare("
+                    UPDATE users 
+                    SET address = ?, city = ?, postal_code = ?, phone = ? 
+                    WHERE id = ?
+                ");
+                $uStmt->execute([$shippingAddress, $shippingCity, $shippingPostal, $shippingPhone, $userId]);
+            }
+
             header("Location: checkout.php?step=2");
             exit;
         }
@@ -143,8 +157,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get checkout data from session
+// Get checkout data from session or pre-fill from user profile / past orders
 $checkout = $_SESSION['checkout'] ?? [];
+
+if ($userId) {
+    // 1. Fetch user's saved shipping details from users profile
+    $uStmt = $db->prepare("SELECT name, phone, address, city, postal_code FROM users WHERE id = ?");
+    $uStmt->execute([$userId]);
+    $savedUser = $uStmt->fetch();
+
+    if ($savedUser) {
+        if (empty($checkout['shipping_name']) && !empty($savedUser['name'])) {
+            $checkout['shipping_name'] = $savedUser['name'];
+        }
+        if (empty($checkout['shipping_phone']) && !empty($savedUser['phone'])) {
+            $checkout['shipping_phone'] = $savedUser['phone'];
+        }
+        if (empty($checkout['shipping_address']) && !empty($savedUser['address'])) {
+            $checkout['shipping_address'] = $savedUser['address'];
+        }
+        if (empty($checkout['shipping_city']) && !empty($savedUser['city'])) {
+            $checkout['shipping_city'] = $savedUser['city'];
+        }
+        if (empty($checkout['shipping_postal']) && !empty($savedUser['postal_code'])) {
+            $checkout['shipping_postal'] = $savedUser['postal_code'];
+        }
+    }
+
+    // 2. If address is still empty, look up user's most recent order
+    if (empty($checkout['shipping_address'])) {
+        $lastOrderStmt = $db->prepare("
+            SELECT shipping_name, shipping_address, shipping_city, shipping_postal, shipping_phone 
+            FROM orders 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        ");
+        $lastOrderStmt->execute([$userId]);
+        $lastOrder = $lastOrderStmt->fetch();
+        if ($lastOrder) {
+            if (empty($checkout['shipping_name'])) $checkout['shipping_name'] = $lastOrder['shipping_name'];
+            if (empty($checkout['shipping_phone'])) $checkout['shipping_phone'] = $lastOrder['shipping_phone'];
+            if (empty($checkout['shipping_address'])) $checkout['shipping_address'] = $lastOrder['shipping_address'];
+            if (empty($checkout['shipping_city'])) $checkout['shipping_city'] = $lastOrder['shipping_city'];
+            if (empty($checkout['shipping_postal'])) $checkout['shipping_postal'] = $lastOrder['shipping_postal'];
+        }
+    }
+}
 
 $page_title = "Checkout - Girls' Footwear";
 include __DIR__ . '/../includes/header.php';
@@ -233,6 +292,17 @@ include __DIR__ . '/../includes/header.php';
                     <input type="tel" id="shipping_phone" name="shipping_phone"
                            value="<?php echo escape($checkout['shipping_phone'] ?? ''); ?>" required>
                 </div>
+
+                <?php if ($userId): ?>
+                <div class="form-group" style="margin-top: 15px; margin-bottom: 25px; padding: 12px 15px; background: var(--gray-light); border-radius: 8px; border: 1px solid var(--gray-border);">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; font-size: 14px; font-weight: 500; color: var(--dark);">
+                        <input type="checkbox" name="save_shipping_info" value="1" 
+                               <?php echo (!isset($checkout['save_shipping_info']) || !empty($checkout['save_shipping_info'])) ? 'checked' : ''; ?>
+                               style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                        <span><i class="fas fa-bookmark" style="color: var(--primary); margin-right: 4px;"></i> Save this shipping information to my account for future orders</span>
+                    </label>
+                </div>
+                <?php endif; ?>
 
                 <div class="checkout-actions">
                     <a href="pages/cart.php" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back to Cart</a>

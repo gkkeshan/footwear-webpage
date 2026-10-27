@@ -63,16 +63,7 @@ $cartCount = getCartItemCount();
             <ul class="nav-main">
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/index.php">Home</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/products.php">All Products</a></li>
-                <?php
-                // Dynamic categories from DB
-                try {
-                    $dbNav = getDBConnection();
-                    $navCats = $dbNav->query("SELECT name, slug FROM categories WHERE parent_id IS NULL ORDER BY name LIMIT 6")->fetchAll();
-                    foreach ($navCats as $nc) {
-                        echo '<li><a href="' . BASE_URL . 'frontend/pages/products.php?category=' . escape($nc['slug']) . '">' . escape($nc['name']) . '</a></li>';
-                    }
-                } catch (Exception $e) {}
-                ?>
+                <li><a href="<?php echo BASE_URL; ?>frontend/pages/products.php?category=sandals">Sandals</a></li>
                 <?php if (isAdmin()): ?>
                     <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/index.php"><i class="fas fa-cog"></i> Admin</a></li>
                 <?php endif; ?>

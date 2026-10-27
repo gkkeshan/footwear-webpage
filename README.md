@@ -31,27 +31,32 @@ A full-featured, responsive e-commerce web platform for girls' footwear catering
 
 ```text
 girls-footwear/
-├── api/                # REST API endpoints (auth, cart, orders, products)
-├── assets/             # Static assets (CSS styles, JS scripts, product images)
-│   ├── css/
-│   ├── images/
-│   └── js/
-├── config/             # Database connection & credentials (PDO)
-├── errors/             # Custom error pages (404, etc.)
-├── includes/           # Reusable components (header, footer, helper functions)
-├── pages/              # Frontend pages & Admin portal
-│   ├── admin/          # Admin management (categories, products, orders, images)
-│   ├── cart.php        # Shopping cart view
-│   ├── checkout.php    # Checkout process
-│   ├── index.php       # Homepage & featured showcase
-│   ├── login.php       # User & Admin authentication
-│   ├── product.php     # Individual product details
-│   ├── products.php    # Product listing & filters
-│   └── register.php    # Customer registration
-├── sql/
-│   └── schema.sql      # Database schema, tables, and seed dataset
-├── .gitignore          # Git exclusion rules
-└── README.md           # Documentation
+├── backend/                # Server-side architecture & business logic
+│   ├── api/                # JSON API endpoints (auth, cart, orders, products, payhere_notify)
+│   ├── config/             # Database connection (PDO) & PayHere configuration
+│   ├── includes/           # Reusable components (headers, footers, helper functions)
+│   └── sql/
+│       └── schema.sql      # Single authoritative database schema & seed dataset
+├── frontend/               # Client-facing presentation layer
+│   ├── assets/             # Static assets (CSS styles, JS scripts, product images)
+│   │   ├── css/
+│   │   ├── images/
+│   │   └── js/
+│   ├── errors/             # Custom error pages (404, etc.)
+│   └── pages/              # User views & Admin portal
+│       ├── admin/          # Admin management (categories, products, orders, images)
+│       ├── account.php     # Customer account & order history
+│       ├── cart.php        # Shopping cart view
+│       ├── checkout.php    # Checkout process with PayHere integration
+│       ├── index.php       # Homepage & featured showcase
+│       ├── login.php       # User & Admin authentication
+│       ├── product.php     # Individual product details
+│       ├── products.php    # Product listing & multifaceted filters
+│       └── register.php    # Customer registration
+├── index.php               # Root entrypoint redirecting to frontend/pages/index.php
+├── reset-admin.php         # Admin account recovery script
+├── .gitignore              # Git exclusion rules
+└── README.md               # Documentation
 ```
 
 ---
@@ -78,11 +83,11 @@ girls-footwear/
      ```
    - Import the database schema and sample data:
      ```bash
-     mysql -u root -p girls_footwear < sql/schema.sql
+     mysql -u root -p girls_footwear < backend/sql/schema.sql
      ```
 
 3. **Update Database Credentials**:
-   - Open `config/database.php` and configure your local credentials:
+   - Open `backend/config/database.php` and configure your local credentials:
      ```php
      define('DB_HOST', 'localhost');
      define('DB_NAME', 'girls_footwear');

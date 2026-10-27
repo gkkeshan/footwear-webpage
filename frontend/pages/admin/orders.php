@@ -139,8 +139,60 @@ if ($action === 'view' && isset($_GET['id'])) {
     exit;
 }
 
-// Get all orders
-$orders = $db->query("SELECT * FROM orders ORDER BY created_at DESC")->fetchAll();
+// --- Date and Status Filtering ---
+$preset    = trim($_GET['preset'] ?? '');
+$startDate = trim($_GET['start_date'] ?? '');
+$endDate   = trim($_GET['end_date'] ?? '');
+$status    = trim($_GET['status'] ?? '');
+
+if ($preset === 'this_month') {
+    $startDate = date('Y-m-01');
+    $endDate   = date('Y-m-t');
+} elseif ($preset === 'last_month') {
+    $startDate = date('Y-m-01', strtotime('first day of last month'));
+    $endDate   = date('Y-m-t', strtotime('last day of last month'));
+} elseif ($preset === 'today') {
+    $startDate = date('Y-m-d');
+    $endDate   = date('Y-m-d');
+} elseif ($preset === 'all') {
+    $startDate = '';
+    $endDate   = '';
+    $status    = '';
+}
+
+$datePattern = '/^\d{4}-\d{2}-\d{2}$/';
+if ($startDate && !preg_match($datePattern, $startDate)) $startDate = '';
+if ($endDate && !preg_match($datePattern, $endDate)) $endDate = '';
+
+$where = [];
+$params = [];
+if (!empty($startDate)) {
+    $where[] = "created_at >= ?";
+    $params[] = $startDate . ' 00:00:00';
+}
+if (!empty($endDate)) {
+    $where[] = "created_at <= ?";
+    $params[] = $endDate . ' 23:59:59';
+}
+if (!empty($status)) {
+    $where[] = "status = ?";
+    $params[] = $status;
+}
+
+$whereClause = !empty($where) ? "WHERE " . implode(' AND ', $where) : "";
+$stmt = $db->prepare("SELECT * FROM orders $whereClause ORDER BY created_at DESC");
+$stmt->execute($params);
+$orders = $stmt->fetchAll();
+
+// Calculate total revenue for this filtered set (excluding cancelled)
+$filteredRevTotal = 0;
+foreach ($orders as $o) {
+    if ($o['status'] !== 'cancelled') {
+        $filteredRevTotal += (float)$o['total'];
+    }
+}
+
+$isFiltered = (!empty($startDate) || !empty($endDate) || !empty($status));
 
 $admin_title = "Orders";
 include __DIR__ . '/../../../backend/includes/admin-header.php';
@@ -148,7 +200,54 @@ include __DIR__ . '/../../../backend/includes/admin-header.php';
 echo $message;
 ?>
 
-<h1>Orders Management</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+    <h1 style="margin: 0;">Orders Management</h1>
+    <div style="background: var(--white); padding: 8px 16px; border-radius: 8px; box-shadow: var(--shadow); font-size: 14px;">
+        Total: <strong><?php echo count($orders); ?></strong> orders &bull; Revenue: <strong style="color: var(--primary);"><?php echo formatPrice($filteredRevTotal); ?></strong>
+    </div>
+</div>
+
+<!-- Date & Status Filter Bar -->
+<div style="background: var(--white); border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; box-shadow: var(--shadow); border: 1px solid #f0f0f0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+        <span style="font-weight: 700; font-size: 14px; color: #444;">
+            <i class="fas fa-filter" style="color: var(--primary); margin-right: 6px;"></i> Filter Orders by Date
+        </span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <a href="?preset=this_month" style="padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; text-decoration: none; background: #f5f5f5; color: #555;">This Month</a>
+            <a href="?preset=last_month" style="padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; text-decoration: none; background: #f5f5f5; color: #555;">Last Month</a>
+            <a href="?preset=today" style="padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; text-decoration: none; background: #f5f5f5; color: #555;">Today</a>
+            <a href="?preset=all" style="padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; text-decoration: none; background: #f5f5f5; color: #555;">All Orders</a>
+        </div>
+    </div>
+    <form method="GET" action="orders.php" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Start Date</label>
+            <input type="date" name="start_date" value="<?php echo escape($startDate); ?>" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">End Date</label>
+            <input type="date" name="end_date" value="<?php echo escape($endDate); ?>" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+        </div>
+        <div style="min-width: 140px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px;">Status</label>
+            <select name="status" style="width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                <option value="">All Statuses</option>
+                <option value="pending" <?php echo ($status === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                <option value="processing" <?php echo ($status === 'processing') ? 'selected' : ''; ?>>Processing</option>
+                <option value="shipped" <?php echo ($status === 'shipped') ? 'selected' : ''; ?>>Shipped</option>
+                <option value="delivered" <?php echo ($status === 'delivered') ? 'selected' : ''; ?>>Delivered</option>
+                <option value="cancelled" <?php echo ($status === 'cancelled') ? 'selected' : ''; ?>>Cancelled</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;"><i class="fas fa-filter"></i> Apply</button>
+            <?php if ($isFiltered): ?>
+                <a href="orders.php" class="btn btn-outline" style="padding: 8px 14px; font-size: 13px; color: #666;"><i class="fas fa-times"></i> Reset</a>
+            <?php endif; ?>
+        </div>
+    </form>
+</div>
 
 <div class="admin-table" style="margin-top: 20px;">
     <?php if (empty($orders)): ?>

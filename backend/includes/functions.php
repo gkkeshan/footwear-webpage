@@ -161,7 +161,7 @@ function getCartItemCount() {
         $stmt = $db->prepare($sql);
         $stmt->execute([$user_id]);
     } else {
-        $sql = "SELECT SUM(quantity) as count FROM cart_items WHERE session_id = ?";
+        $sql = "SELECT SUM(quantity) as count FROM cart_items WHERE session_id = ? AND user_id IS NULL";
         $stmt = $db->prepare($sql);
         $stmt->execute([$session_id]);
     }
@@ -177,6 +177,9 @@ function getCartItems() {
     $user_id = getCurrentUserId();
 
     if ($user_id) {
+        // For logged-in users: only return rows that belong to this user_id.
+        // Exclude orphaned guest rows (user_id IS NULL) that share the same session,
+        // which would otherwise double-count items.
         $sql = "SELECT ci.*, p.name, p.price, p.slug, p.stock
                 FROM cart_items ci
                 JOIN products p ON ci.product_id = p.id
@@ -184,10 +187,11 @@ function getCartItems() {
         $stmt = $db->prepare($sql);
         $stmt->execute([$user_id]);
     } else {
+        // Guest: only return rows with no user_id for this session
         $sql = "SELECT ci.*, p.name, p.price, p.slug, p.stock
                 FROM cart_items ci
                 JOIN products p ON ci.product_id = p.id
-                WHERE ci.session_id = ? AND p.active = TRUE";
+                WHERE ci.session_id = ? AND ci.user_id IS NULL AND p.active = TRUE";
         $stmt = $db->prepare($sql);
         $stmt->execute([$session_id]);
     }

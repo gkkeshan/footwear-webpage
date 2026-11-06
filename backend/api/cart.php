@@ -51,16 +51,22 @@ switch ($action) {
 
         // Check if item already in cart
         if ($user_id) {
+            // First, delete any orphaned guest-session rows for this product/size
+            // (these can appear if the same item was added before login and the
+            //  login transfer duplicated the row)
+            $stmt = $db->prepare("DELETE FROM cart_items WHERE session_id = ? AND user_id IS NULL AND product_id = ? AND size = ?");
+            $stmt->execute([$session_id, $product_id, $size]);
+
             $stmt = $db->prepare("SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? AND size = ?");
             $stmt->execute([$user_id, $product_id, $size]);
         } else {
-            $stmt = $db->prepare("SELECT id, quantity FROM cart_items WHERE session_id = ? AND product_id = ? AND size = ?");
+            $stmt = $db->prepare("SELECT id, quantity FROM cart_items WHERE session_id = ? AND user_id IS NULL AND product_id = ? AND size = ?");
             $stmt->execute([$session_id, $product_id, $size]);
         }
         $existing = $stmt->fetch();
 
         if ($existing) {
-            // Update quantity
+            // Add to existing quantity (accumulate)
             $newQuantity = $existing['quantity'] + $quantity;
             if ($newQuantity > 10) $newQuantity = 10;
             if ($newQuantity > $product['stock']) $newQuantity = $product['stock'];

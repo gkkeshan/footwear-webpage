@@ -41,10 +41,10 @@ $cartCount = getCartItemCount();
             <a href="<?php echo BASE_URL; ?>frontend/pages/index.php" class="logo">
                 <img src="<?php echo BASE_URL; ?>buy-yours-header-logo.svg" alt="BUYOURS" class="header-logo-full">
             </a>
-            <div class="search-bar">
-                <input type="text" id="search-input" placeholder="Search for sandals, kolhapuri, flats..." aria-label="Search products">
-                <button type="button" aria-label="Search"><i class="fas fa-search"></i></button>
-            </div>
+            <form action="<?php echo BASE_URL; ?>frontend/pages/products.php" method="GET" class="search-bar">
+                <input type="text" name="search" id="search-input" value="<?php echo isset($_GET['search']) ? escape($_GET['search']) : ''; ?>" placeholder="Search for sandals, kolhapuri, flats..." aria-label="Search products">
+                <button type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+            </form>
             <div class="header-actions">
                 <?php if (isLoggedIn()): ?>
                     <a href="<?php echo BASE_URL; ?>frontend/pages/account.php"><i class="fas fa-user"></i> <?php echo escape($_SESSION['user_name']); ?></a>

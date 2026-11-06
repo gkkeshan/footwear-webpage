@@ -164,9 +164,9 @@ include __DIR__ . '/../../backend/includes/header.php';
                 <h3 style="margin-bottom: 15px;">Quantity</h3>
                 <div class="quantity-selector">
                     <div class="quantity-controls">
-                        <button type="button" class="qty-btn" onclick="this.parentElement.querySelector('.qty-input').value = Math.max(1, parseInt(this.parentElement.querySelector('.qty-input').value) - 1)">-</button>
+                        <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease quantity">-</button>
                         <input type="text" class="qty-input" value="1" readonly>
-                        <button type="button" class="qty-btn" onclick="this.parentElement.querySelector('.qty-input').value = Math.min(10, parseInt(this.parentElement.querySelector('.qty-input').value) + 1)">+</button>
+                        <button type="button" class="qty-btn" data-action="increase" aria-label="Increase quantity">+</button>
                     </div>
                     <span style="color: var(--gray); font-size: 14px;">(Max 10 per order)</span>
                 </div>

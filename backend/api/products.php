@@ -64,7 +64,8 @@ switch ($action) {
         }
 
         if ($search) {
-            $where[] = "(p.name LIKE ? OR p.description LIKE ?)";
+            $where[] = "(p.name LIKE ? OR p.description LIKE ? OR c.name LIKE ?)";
+            $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
         }

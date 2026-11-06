@@ -70,9 +70,18 @@ include __DIR__ . '/../../backend/includes/header.php';
     <h2 class="auth-title">Welcome Back!</h2>
     <p style="text-align: center; color: var(--gray); margin-bottom: 30px;">Sign in to your account</p>
 
+    <?php 
+    $flash = getFlashMessage();
+    if ($flash): ?>
+        <div class="flash-message flash-<?php echo escape($flash['type']); ?>">
+            <i class="fas fa-<?php echo $flash['type'] === 'success' ? 'check-circle' : 'exclamation-circle'; ?>"></i>
+            <?php echo escape($flash['message']); ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($error)): ?>
         <div class="flash-message flash-error">
-            <?php echo escape($error); ?>
+            <i class="fas fa-exclamation-circle"></i> <?php echo escape($error); ?>
         </div>
     <?php endif; ?>
 

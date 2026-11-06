@@ -106,7 +106,7 @@ include __DIR__ . '/../../backend/includes/header.php';
                                 </form>
                             </div>
                         </div>
-                        <div class="cart-item-total" style="text-align: right; font-weight: bold; color: var(--primary); font-size: 18px;">
+                        <div class="cart-item-total item-total" style="text-align: right; font-weight: bold; color: var(--primary); font-size: 18px;">
                             <?php echo formatPrice($item['price'] * $item['quantity']); ?>
                         </div>
                         <form method="POST" style="display: none;" id="remove-form-<?php echo $item['id']; ?>">
@@ -137,15 +137,17 @@ include __DIR__ . '/../../backend/includes/header.php';
                 <span class="cart-total" style="color: var(--primary);"><?php echo formatPrice($total); ?></span>
             </div>
 
-            <?php if ($shipping > 0): ?>
-                <div style="background: var(--primary-light); padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
-                    <i class="fas fa-gift"></i> Add <?php echo formatPrice(5000 - $subtotal); ?> more for FREE shipping!
-                </div>
-            <?php else: ?>
-                <div style="background: var(--success); color: white; padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
-                    <i class="fas fa-truck"></i> You get FREE shipping!
-                </div>
-            <?php endif; ?>
+            <div id="shipping-banner">
+                <?php if ($shipping > 0): ?>
+                    <div style="background: var(--primary-light); padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
+                        <i class="fas fa-gift"></i> Add <?php echo formatPrice(5000 - $subtotal); ?> more for FREE shipping!
+                    </div>
+                <?php else: ?>
+                    <div style="background: var(--success); color: white; padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
+                        <i class="fas fa-truck"></i> You get FREE shipping!
+                    </div>
+                <?php endif; ?>
+            </div>
 
             <a href="checkout.php" class="btn btn-primary btn-block" style="margin-bottom: 10px;">
                 <i class="fas fa-lock"></i> Proceed to Checkout

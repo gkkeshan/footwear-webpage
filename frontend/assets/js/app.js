@@ -175,25 +175,34 @@ function promptForSize(sizes, productName) {
 }
 
 async function updateCartItem(cartItemId, quantity) {
-    const result = await apiCall('cart.php?action=update', 'POST', {
-        cart_item_id: cartItemId,
-        quantity: quantity,
-    });
+    // Debounce: if called twice in 150ms, only the last value is sent
+    if (!window._cartUpdateTimers) window._cartUpdateTimers = {};
+    clearTimeout(window._cartUpdateTimers[cartItemId]);
 
-    if (result.success) {
-        await updateCartCount();
-        updateCartTotal(result.total);
+    return new Promise((resolve) => {
+        window._cartUpdateTimers[cartItemId] = setTimeout(async () => {
+            const result = await apiCall('cart.php?action=update', 'POST', {
+                cart_item_id: cartItemId,
+                quantity: quantity,
+            });
 
-        const itemRow = document.querySelector(`[data-cart-item="${cartItemId}"]`);
-        if (itemRow) {
-            const priceEl = itemRow.querySelector('.item-total');
-            if (priceEl) {
-                priceEl.textContent = formatMoney(result.item_total || 0);
+            if (result.success) {
+                await updateCartCount();
+                updateCartTotal(result.total);
+
+                const itemRow = document.querySelector(`[data-cart-item="${cartItemId}"]`);
+                if (itemRow) {
+                    const priceEl = itemRow.querySelector('.item-total, .cart-item-total');
+                    if (priceEl) {
+                        priceEl.textContent = formatMoney(result.item_total || 0);
+                    }
+                }
+            } else {
+                showNotification(result.message || 'Failed to update cart', 'error');
             }
-        }
-    } else {
-        showNotification(result.message || 'Failed to update cart', 'error');
-    }
+            resolve();
+        }, 150);
+    });
 }
 
 async function removeCartItem(cartItemId) {
@@ -230,13 +239,34 @@ function updateCartTotal(total) {
     const totalEl = document.querySelector('.cart-total');
     const subtotalEl = document.querySelector('.cart-subtotal');
     const shippingEl = document.querySelector('.cart-shipping');
+    const bannerEl = document.getElementById('shipping-banner');
 
     const shipping = total > 5000 ? 0 : 400;
     const finalTotal = total + shipping;
 
     if (subtotalEl) subtotalEl.textContent = formatMoney(total);
-    if (shippingEl) shippingEl.textContent = shipping === 0 ? 'FREE' : formatMoney(shipping);
+    if (shippingEl) {
+        shippingEl.textContent = shipping === 0 ? 'FREE' : formatMoney(shipping);
+        shippingEl.style.color = shipping === 0 ? 'var(--success)' : 'var(--dark)';
+    }
     if (totalEl) totalEl.textContent = formatMoney(finalTotal);
+
+    if (bannerEl) {
+        if (shipping > 0) {
+            const diff = 5000 - total;
+            bannerEl.innerHTML = `
+                <div style="background: var(--primary-light); padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
+                    <i class="fas fa-gift"></i> Add ${formatMoney(diff)} more for FREE shipping!
+                </div>
+            `;
+        } else {
+            bannerEl.innerHTML = `
+                <div style="background: var(--success); color: white; padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; text-align: center;">
+                    <i class="fas fa-truck"></i> You get FREE shipping!
+                </div>
+            `;
+        }
+    }
 }
 
 function checkEmptyCart() {
@@ -290,12 +320,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // --- Product detail page: qty stepper ---
-    document.querySelectorAll('.qty-btn').forEach(btn => {
+    document.querySelectorAll('.quantity-selector .qty-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const input = this.parentElement.querySelector('.qty-input');
             if (!input) return;
             let value = parseInt(input.value) || 1;
-            if (this.textContent.trim() === '+') value = Math.min(value + 1, 10);
+            const isIncrease = this.dataset.action === 'increase' || this.textContent.trim() === '+';
+            if (isIncrease) value = Math.min(value + 1, 10);
             else value = Math.max(value - 1, 1);
             input.value = value;
         });
@@ -307,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addBtn.addEventListener('click', async function () {
             const productId = this.dataset.productId;
             const selectedSize = document.querySelector('input[name="size"]:checked');
-            const quantity = parseInt(document.querySelector('.qty-input')?.value) || 1;
+            const quantity = parseInt(document.querySelector('.quantity-selector .qty-input')?.value) || 1;
             const colorEl = document.querySelector('.color-swatch.active');
             const color = colorEl ? colorEl.dataset.color : '';
 
@@ -324,15 +355,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Cart page: qty update ---
     document.querySelectorAll('.cart-qty-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (this.dataset.updating === '1') return;
             const cartItemId = this.dataset.cartItemId;
-            const input = this.closest('.quantity-controls').querySelector('.qty-input');
-            let value = parseInt(input.value) || 1;
+            const controls = this.closest('.quantity-controls');
+            const input = controls?.querySelector('.qty-input');
+            if (!input) return;
+            let currentVal = parseInt(input.value) || 1;
+            let targetVal = currentVal;
             const action = this.dataset.action;
-            if (action === 'increase') value = Math.min(value + 1, 10);
-            else value = Math.max(value - 1, 1);
-            input.value = value;
-            updateCartItem(cartItemId, value);
+            if (action === 'increase') targetVal = Math.min(currentVal + 1, 10);
+            else targetVal = Math.max(currentVal - 1, 1);
+
+            if (targetVal === currentVal) return;
+
+            // Lock all qty buttons in this row
+            const allBtns = controls.querySelectorAll('.cart-qty-btn');
+            allBtns.forEach(b => { b.disabled = true; b.dataset.updating = '1'; });
+            input.value = targetVal;
+
+            try {
+                await updateCartItem(cartItemId, targetVal);
+            } finally {
+                allBtns.forEach(b => { b.disabled = false; b.dataset.updating = '0'; });
+            }
         });
     });
 

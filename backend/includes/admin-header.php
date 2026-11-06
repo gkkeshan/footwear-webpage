@@ -37,6 +37,7 @@ if (!isAdmin()) {
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/index.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/products.php"><i class="fas fa-box"></i> Products</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+                <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/users.php"><i class="fas fa-users"></i> Users</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/products.php?filter=inventory"><i class="fas fa-warehouse"></i> Inventory</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/categories.php"><i class="fas fa-tags"></i> Categories</a></li>
                 <li><a href="<?php echo BASE_URL; ?>frontend/pages/admin/manage-images.php"><i class="fas fa-images"></i> Images</a></li>

@@ -59,7 +59,8 @@ if ($priceMax) {
 }
 
 if ($search) {
-    $where[] = "(p.name LIKE ? OR p.description LIKE ?)";
+    $where[] = "(p.name LIKE ? OR p.description LIKE ? OR c.name LIKE ?)";
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
@@ -157,7 +158,7 @@ include __DIR__ . '/../../backend/includes/header.php';
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-outline btn-block" onclick="location.reload()">Clear All</button>
+                <button type="button" class="btn btn-outline btn-block" onclick="window.location.href='products.php'">Clear All</button>
             </form>
         </aside>
 
